@@ -2,7 +2,9 @@ package com.example.tvremotebridge;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.content.Context;
 import android.graphics.Path;
+import android.media.AudioManager;
 import android.view.accessibility.AccessibilityEvent;
 import fi.iki.elonen.NanoHTTPD;
 import java.io.IOException;
@@ -43,6 +45,16 @@ public class RemoteAccessibilityService extends AccessibilityService {
         dispatchGesture(builder.build(), null, null);
     }
 
+    private void swipe(float fromX, float fromY, float toX, float toY) {
+        Path path = new Path();
+        path.moveTo(fromX, fromY);
+        path.lineTo(toX, toY);
+        GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(path, 0, 150);
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        builder.addStroke(stroke);
+        dispatchGesture(builder.build(), null, null);
+    }
+
     private class RemoteHttpServer extends NanoHTTPD {
         public RemoteHttpServer(int port) {
             super(port);
@@ -51,6 +63,7 @@ public class RemoteAccessibilityService extends AccessibilityService {
         @Override
         public Response serve(IHTTPSession session) {
             String uri = session.getUri().replace("/", "");
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
             switch (uri) {
                 case "home":
@@ -62,14 +75,33 @@ public class RemoteAccessibilityService extends AccessibilityService {
                 case "recents":
                     performGlobalAction(GLOBAL_ACTION_RECENTS);
                     break;
-                case "notifications":
-                    performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
-                    break;
                 case "power":
                     performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
                     break;
+                case "volume_up":
+                    if (am != null) {
+                        am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
+                    }
+                    break;
+                case "volume_down":
+                    if (am != null) {
+                        am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
+                    }
+                    break;
                 case "select":
                     clickScreen(683, 384);
+                    break;
+                case "up":
+                    swipe(683, 500, 683, 300);
+                    break;
+                case "down":
+                    swipe(683, 300, 683, 500);
+                    break;
+                case "left":
+                    swipe(500, 384, 300, 384);
+                    break;
+                case "right":
+                    swipe(300, 384, 500, 384);
                     break;
                 default:
                     return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Unknown command");
