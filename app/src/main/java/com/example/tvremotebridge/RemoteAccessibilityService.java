@@ -37,8 +37,6 @@ public class RemoteAccessibilityService extends AccessibilityService {
         if (server != null) server.stop();
     }
 
-    // --- NODE SELECTION & CLICKING LOGIC ---
-
     private void clickAction() {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root != null) {
@@ -54,7 +52,6 @@ public class RemoteAccessibilityService extends AccessibilityService {
             }
             root.recycle();
         }
-        // Fallback tap agar koi node focus na ho
         dispatchTap(683, 384);
     }
 
@@ -75,8 +72,6 @@ public class RemoteAccessibilityService extends AccessibilityService {
         }
     }
 
-    // --- SCREEN GESTURE DISPATCHERS ---
-
     private void dispatchTap(float x, float y) {
         Path path = new Path();
         path.moveTo(x, y);
@@ -96,8 +91,6 @@ public class RemoteAccessibilityService extends AccessibilityService {
         dispatchGesture(builder.build(), null, null);
     }
 
-    // --- EMBEDDED HTTP SERVER ---
-
     private class RemoteHttpServer extends NanoHTTPD {
         public RemoteHttpServer(int port) {
             super(port);
@@ -107,6 +100,32 @@ public class RemoteAccessibilityService extends AccessibilityService {
         public Response serve(IHTTPSession session) {
             String uri = session.getUri().replace("/", "").toLowerCase();
             AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+
+            // Agar user direct browser me IP khole (http://192.168.100.5:8080)
+            if (uri.isEmpty() || uri.equals("remote")) {
+                String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+                    + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                    + "<title>MStar Remote</title><style>"
+                    + "*{box-sizing:border-box;touch-action:manipulation}body{margin:0;padding:16px;background:#0f172a;color:#fff;font-family:system-ui;display:flex;justify-content:center;align-items:center;min-height:100vh}"
+                    + ".box{width:100%;max-width:320px;background:#1e293b;border-radius:32px;padding:24px 18px;display:flex;flex-direction:column;gap:20px;align-items:center}"
+                    + ".btn{border:none;display:flex;align-items:center;justify-content:center;color:#fff;border-radius:14px;background:#334155;font-weight:bold;cursor:pointer;-webkit-tap-highlight-color:transparent}"
+                    + ".btn:active{transform:scale(.92);background:#475569}.pwr{width:44px;height:44px;border-radius:50%!important;background:#dc2626!important}"
+                    + ".dpad{position:relative;width:200px;height:200px;background:#0f172a;border-radius:50%}"
+                    + ".dpad .btn{position:absolute;width:52px;height:52px}"
+                    + ".up{top:6px;left:50%;transform:translateX(-50%)}.down{bottom:6px;left:50%;transform:translateX(-50%)}.left{left:6px;top:50%;transform:translateY(-50%)}.right{right:6px;top:50%;transform:translateY(-50%)}"
+                    + ".ok{width:64px!important;height:64px!important;border-radius:50%!important;background:#2563eb!important;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2}"
+                    + ".g3{width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.g3 .btn{height:48px;width:100%}"
+                    + ".g2{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}.g2 .btn{height:52px;background:#0284c7;width:100%}"
+                    + "</style></head><body><div class='box'>"
+                    + "<div style='width:100%;display:flex;justify-content:space-between;align-items:center'><b style='font-size:12px;color:#94a3b8'>MStar Remote</b><button class='btn pwr' onclick='send(\"power\")'>⏻</button></div>"
+                    + "<div class='dpad'><button class='btn up' onclick='send(\"up\")'>▲</button><button class='btn left' onclick='send(\"left\")'>◀</button><button class='btn ok' onclick='send(\"select\")'>OK</button><button class='btn right' onclick='send(\"right\")'>▶</button><button class='btn down' onclick='send(\"down\")'>▼</button></div>"
+                    + "<div class='g3'><button class='btn' onclick='send(\"back\")'>BACK</button><button class='btn' onclick='send(\"home\")'>HOME</button><button class='btn' onclick='send(\"recents\")'>APPS</button></div>"
+                    + "<div class='g2'><button class='btn' onclick='send(\"volume_down\")'>VOL −</button><button class='btn' onclick='send(\"volume_up\")'>VOL ＋</button></div>"
+                    + "</div><script>"
+                    + "function send(cmd){ fetch('/' + cmd + '?t=' + Date.now()).catch(()=>{}); }"
+                    + "</script></body></html>";
+                return newFixedLengthResponse(Response.Status.OK, "text/html", html);
+            }
 
             switch (uri) {
                 case "home":
