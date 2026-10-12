@@ -1,10 +1,9 @@
 package com.example.tvremotebridge;
 
 import android.accessibilityservice.AccessibilityService;
-import android.accessibilityservice.GestureDescription;
 import android.content.Context;
-import android.graphics.Path;
 import android.media.AudioManager;
+import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import fi.iki.elonen.NanoHTTPD;
@@ -47,14 +46,12 @@ public class RemoteAccessibilityService extends AccessibilityService {
             if (focused != null) {
                 focused.performAction(AccessibilityNodeInfo.ACTION_CLICK);
                 focused.recycle();
-            } else {
-                tap(683, 384);
             }
             root.recycle();
         }
     }
 
-    private void navigateFocus(int direction) {
+    private void moveFocus(int direction) {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root != null) {
             AccessibilityNodeInfo focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
@@ -71,15 +68,6 @@ public class RemoteAccessibilityService extends AccessibilityService {
             }
             root.recycle();
         }
-    }
-
-    private void tap(float x, float y) {
-        Path path = new Path();
-        path.moveTo(x, y);
-        GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(path, 0, 50);
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(stroke);
-        dispatchGesture(builder.build(), null, null);
     }
 
     private class RemoteHttpServer extends NanoHTTPD {
@@ -119,10 +107,16 @@ public class RemoteAccessibilityService extends AccessibilityService {
                     clickFocusedNode();
                     break;
                 case "up":
-                    navigateFocus(AccessibilityNodeInfo.FOCUS_BACKWARD);
+                    moveFocus(View.FOCUS_UP);
                     break;
                 case "down":
-                    navigateFocus(AccessibilityNodeInfo.FOCUS_FORWARD);
+                    moveFocus(View.FOCUS_DOWN);
+                    break;
+                case "left":
+                    moveFocus(View.FOCUS_LEFT);
+                    break;
+                case "right":
+                    moveFocus(View.FOCUS_RIGHT);
                     break;
                 default:
                     return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Unknown");
