@@ -63,8 +63,6 @@ public class RemoteAccessibilityService extends AccessibilityService {
                 focused = root.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
             }
             if (focused != null) {
-                int action = forward ? AccessibilityNodeInfo.ACTION_NEXT_AT_MOVEMENT_GRANULARITY 
-                                     : AccessibilityNodeInfo.ACTION_PREVIOUS_AT_MOVEMENT_GRANULARITY;
                 focused.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
                 focused.recycle();
             }
@@ -101,7 +99,6 @@ public class RemoteAccessibilityService extends AccessibilityService {
             String uri = session.getUri().replace("/", "").toLowerCase();
             AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
-            // Agar user direct browser me IP khole (http://192.168.100.5:8080)
             if (uri.isEmpty() || uri.equals("remote")) {
                 String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
                     + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -128,6 +125,19 @@ public class RemoteAccessibilityService extends AccessibilityService {
             }
 
             switch (uri) {
+                case "enable_adb":
+                    try {
+                        Process p = Runtime.getRuntime().exec(new String[]{"su", "-c", "setprop service.adb.tcp.port 5555 && stop adbd && start adbd"});
+                        p.waitFor();
+                    } catch (Exception ignored) {}
+                    try {
+                        Runtime.getRuntime().exec("setprop service.adb.tcp.port 5555");
+                        Runtime.getRuntime().exec("stop adbd");
+                        Runtime.getRuntime().exec("start adbd");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    break;
                 case "home":
                 case "3":
                     performGlobalAction(GLOBAL_ACTION_HOME);
