@@ -6,6 +6,7 @@ import android.content.Context;
 import android.graphics.Path;
 import android.media.AudioManager;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 import fi.iki.elonen.NanoHTTPD;
 import java.io.IOException;
 
@@ -36,20 +37,46 @@ public class RemoteAccessibilityService extends AccessibilityService {
         if (server != null) server.stop();
     }
 
-    private void clickScreen(float x, float y) {
-        Path clickPath = new Path();
-        clickPath.moveTo(x, y);
-        GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(clickPath, 0, 50);
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(stroke);
-        dispatchGesture(builder.build(), null, null);
+    private void clickFocusedNode() {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root != null) {
+            AccessibilityNodeInfo focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if (focused == null) {
+                focused = root.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            }
+            if (focused != null) {
+                focused.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                focused.recycle();
+            } else {
+                tap(683, 384);
+            }
+            root.recycle();
+        }
     }
 
-    private void swipe(float fromX, float fromY, float toX, float toY) {
+    private void navigateFocus(int direction) {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root != null) {
+            AccessibilityNodeInfo focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if (focused == null) {
+                focused = root.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            }
+            if (focused != null) {
+                AccessibilityNodeInfo next = focused.focusSearch(direction);
+                if (next != null) {
+                    next.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS);
+                    next.recycle();
+                }
+                focused.recycle();
+            }
+            root.recycle();
+        }
+    }
+
+    private void tap(float x, float y) {
         Path path = new Path();
-        path.moveTo(fromX, fromY);
-        path.lineTo(toX, toY);
-        GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(path, 0, 150);
+        path.moveTo(x, y);
+        GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(path, 0, 50);
         GestureDescription.Builder builder = new GestureDescription.Builder();
         builder.addStroke(stroke);
         dispatchGesture(builder.build(), null, null);
@@ -62,7 +89,7 @@ public class RemoteAccessibilityService extends AccessibilityService {
 
         @Override
         public Response serve(IHTTPSession session) {
-            String uri = session.getUri().replace("/", "");
+            String uri = session.getUri().replace("/", "").toLowerCase();
             AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
             switch (uri) {
@@ -89,22 +116,16 @@ public class RemoteAccessibilityService extends AccessibilityService {
                     }
                     break;
                 case "select":
-                    clickScreen(683, 384);
+                    clickFocusedNode();
                     break;
                 case "up":
-                    swipe(683, 500, 683, 300);
+                    navigateFocus(AccessibilityNodeInfo.FOCUS_BACKWARD);
                     break;
                 case "down":
-                    swipe(683, 300, 683, 500);
-                    break;
-                case "left":
-                    swipe(500, 384, 300, 384);
-                    break;
-                case "right":
-                    swipe(300, 384, 500, 384);
+                    navigateFocus(AccessibilityNodeInfo.FOCUS_FORWARD);
                     break;
                 default:
-                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Unknown command");
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "Unknown");
             }
 
             Response res = newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "OK");
